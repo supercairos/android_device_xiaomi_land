@@ -15,8 +15,10 @@ persist.rild.nitz_short_ons_2=
 persist.rild.nitz_short_ons_3=
 ril.subscription.types=NV,RUIM
 DEVICE_PROVISIONED=1
-#bug188936, wuwenting.wt, modify, 20160621 don't Start in cdma mode
-ro.telephony.default_network=20
+#
+# Set network mode to (T/L/G/W/1X/EVDO, T/G/W/L) for 7+5 mode device on DSDS mode
+#
+ro.telephony.default_network=22,20
 
 debug.sf.hw=0
 debug.egl.hw=0
@@ -63,8 +65,7 @@ voice.voip.conc.disabled=true
 voice.conc.fallbackpath=deep-buffer
 
 #parser input buffer size(256kb) in byte stream mode
-#bug 206621,zhangjianming.wt,modify,20160808,gudong sport report error
-audio.parser.ip.buffer.size=0
+audio.parser.ip.buffer.size=262144
 
 #
 # system props for the camera
@@ -137,9 +138,6 @@ audio.offload.track.enable=true
 #Enable music through deep buffer
 audio.deep_buffer.media=true
 
-#set for dirac effect to speaker  bug 158388
-persist.audio.dirac.speaker=true
-
 #enable downsampling for multi-channel content > 48Khz
 audio.playback.mch.downsample=true
 
@@ -174,6 +172,9 @@ persist.debug.coresight.config=stm-events
 #property for vendor specific library
 ro.vendor.at_library=libqti-at.so
 ro.vendor.gt_library=libqti-gt.so
+
+#property for game detection feature
+debug.enable.gamed=0
 
 #property to enable narrow search range for video encoding
 vidc.enc.narrow.searchrange=1
@@ -223,49 +224,19 @@ ro.sys.fw.dex2oat_thread_count=4
 ro.cutoff_voltage_mv=3200
 
 #set device emmc size
-#bug156447 wuwenting.wt, change GB to G for ct auto reg, 20160407
-ro.emmc_size=16G
+ro.emmc_size=16GB
 
-ro.build.display.wtid=SW_S88537AA1_V047_M20_MP_XM
 #force HAL1 for below packages
 camera.hal1.packagelist=com.skype.raider,com.google.android.talk
+
+#In video expect camera time source as monotonic
+media.camera.ts.monotonic=1
 
 #properties for limiting preview size in camera
 camera.display.umax=1920x1080
 camera.display.lmax=1280x720
-#bug156417 zhaoqf_sh add for battery charging off if CALL_STATE_OFFHOOK
-persist.sys.chgdisabled=0
-
 #set dsds
 persist.radio.multisim.config=dsds
-
-#set volte
-
-#set product board id
-ro.product.wt.boardid=S88537AA1
-
-#bug156447 wuwenting.wt add for ct auto reg
-ro.ct.device.model=XMP-2016030
-
-# hide internal OOS for 5s when modem is camping
-#bug178306, wuwenting.wt, add, 20160615
-persist.radio.ignore_dom_time=5
-
-#bug144816 wuzhenzhen.wt add for lcd svi
-ro.qualcomm.svi=1
-ro.qcom.svi.sensortype=2
-#config.svi.xml=1
-#config.svi.path=/system/etc/svi_configuration.xml
-
-av.debug.disable.pers.cache=true
-#bug189289 QCM for MSM8937 zhaoqf_sh 20160623
-persist.radio.DROPSETENABLE=1
-
-#bug173273, wuwenting.wt, add, 20160706, for ct sms
-persist.radio.force_on_dc=true
-
-#bug204044, xiongwei.wt, add, 20160815, disable iwlan
-persist.data.iwlan.enable=false
 
 ro.vendor.extension_library=libqti-perfd-client.so
 persist.radio.apm_sim_not_pwdn=1
