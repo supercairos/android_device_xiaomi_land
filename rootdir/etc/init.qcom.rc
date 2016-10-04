@@ -1,4 +1,4 @@
-# Copyright (c) 2009-2012, 2014-2015, The Linux Foundation. All rights reserved.
+# Copyright (c) 2009-2012, 2014-2016, The Linux Foundation. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -27,7 +27,6 @@
 
 import init.qcom.usb.rc
 import init.target.rc
-import init.qcom.factory.rc
 
 on early-init
     mount debugfs debugfs /sys/kernel/debug
@@ -40,6 +39,13 @@ on init
     # Support legacy paths
     symlink /sdcard /mnt/sdcard
     symlink /sdcard /storage/sdcard0
+
+    # Create cgroup mount point for memory
+    mkdir /sys/fs/cgroup/memory/bg 0750 root system
+    write /sys/fs/cgroup/memory/bg/memory.swappiness 140
+    write /sys/fs/cgroup/memory/bg/memory.move_charge_at_immigrate 1
+    chown root system /sys/fs/cgroup/memory/bg/tasks
+    chmod 0660 /sys/fs/cgroup/memory/bg/tasks
 
 on early-boot
     # set RLIMIT_MEMLOCK to 64MB
@@ -89,14 +95,12 @@ on boot
 
     mkdir /persist/drm 0770 system system
     mkdir /persist/bluetooth 0770 bluetooth bluetooth
+    mkdir /persist/misc 0770 system system
 
     #Create NETMGR daemon socket area
     mkdir /dev/socket/netmgr 0750 radio radio
 
     setprop wifi.interface wlan0
-    #NULL lixiuzhen 2016\04\03 add ota prop for mbn update 
-    setprop persist.radio.start_ota_daemon 1
-    setprop persist.radio.sw_mbn_openmkt 1
 
 #   Define TCP buffer sizes for various networks
 #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
@@ -107,8 +111,7 @@ on boot
 
     #enable camera read sensors data
     setprop persist.camera.gyro.disable 0
-	setprop persist.camera.stats.test 5
-	
+
     #Remove SUID bit for iproute2 ip tool
     chmod 0755 /system/bin/ip
 
@@ -244,6 +247,7 @@ on post-fs-data
     # We chown/chmod /persist again so because mount is run as root + defaults
     chown system system /persist
     chmod 0771 /persist
+    chown system system /persist/WCNSS_qcom_wlan_nv.bin
     chmod 0664 /sys/devices/platform/msm_sdcc.1/polling
     chmod 0664 /sys/devices/platform/msm_sdcc.2/polling
     chmod 0664 /sys/devices/platform/msm_sdcc.3/polling
@@ -297,12 +301,12 @@ on post-fs-data
     chmod 0770 /data/misc/fm
 
     # RIDL data
-    #mkdir /data/misc/SelfHost/ 0710 system shell
-    #mkdir /data/misc/SelfHost/QCLogs/ 2750 system shell
-    #mkdir /data/misc/SelfHost/QCLogs/temp/ 0700 system shell
-    #mkdir /data/misc/SelfHost/storage/ 0700 system shell
-    #mkdir /data/misc/SelfHost/Running/ 2750 system shell
-    #mkdir /data/misc/SelfHost/socket/ 2770 system system
+    mkdir /data/misc/SelfHost/ 0710 system shell
+    mkdir /data/misc/SelfHost/QCLogs/ 2750 system shell
+    mkdir /data/misc/SelfHost/QCLogs/temp/ 0700 system shell
+    mkdir /data/misc/SelfHost/storage/ 0700 system shell
+    mkdir /data/misc/SelfHost/Running/ 2750 system shell
+    mkdir /data/misc/SelfHost/socket/ 2770 system system
 
     #Create PERFD deamon related dirs
     mkdir /data/system/perfd 0770 root system
@@ -336,12 +340,15 @@ on post-fs-data
     mkdir /data/misc/qti-logkit/socket-public/ 2750 system qcom_diag
     mkdir /data/misc/qti-logkit/logdata/ 2750 system shell
 
+    #Create SWAP related dirs
+    mkdir /data/system/swap 0770 root system
+    chmod 2770 /data/system/swap
+
 service perfd /system/vendor/bin/perfd
-    class main
-    user root
-    disabled
-    socket perfd seqpacket 0666 root system
-    writepid /dev/cpuset/system-background/tasks
+   class main
+   user root
+   disabled
+   socket perfd seqpacket 0666 root system
 
 service iop /system/bin/iop
     class main
@@ -400,12 +407,6 @@ on property:radio.atfwd.start=false
 on property:persist.debug.trace=1
     mkdir /data/core 0777 root root
     write /proc/sys/kernel/core_pattern "/data/core/%E.%p.%e"
-
-#bug156417 zhaoqf_sh add Allow usb charging to be disabled peristently
-on property:persist.sys.chgdisabled=1
-    write /sys/class/power_supply/battery/charging_enabled 0
-on property:persist.sys.chgdisabled=0
-    write /sys/class/power_supply/battery/charging_enabled 1
 
 on property:init.svc.wpa_supplicant=stopped
     stop dhcpcd
@@ -570,7 +571,7 @@ service bridgemgrd /system/bin/bridgemgrd
 
 service port-bridge /system/bin/port-bridge
     class main
-    user radio
+    user radio system
     group radio system inet
     disabled
     oneshot
@@ -740,6 +741,16 @@ service ptt_ffbm /system/bin/ptt_socket_app -f -d
     disabled
     oneshot
 
+service wifi_ftmd /system/bin/wifi_ftmd
+    user system
+    group system inet net_admin
+    socket wififtmd_server dgram 0660 system system
+    disabled
+    oneshot
+
+on property:wifi.ftmd.load=true
+    insmod /system/lib/modules/pronto/pronto_wlan.ko con_mode=5
+
 service cnss_diag /system/bin/cnss_diag -q -f
     class main
     user root
@@ -807,10 +818,6 @@ on property:drmdiag.load=1
 on property:drmdiag.load=0
     stop drmdiag
 
-# add for cmdc ft test, jiahainan.wt, 20160504
-on property:persist.sys.usb.config=diag,serial_smd,rmnet_bam,adb
-    chmod 0777 /dev/diag
-
 service qcom-sh /system/bin/sh /init.qcom.sh
     class late_start
     user root
@@ -846,16 +853,9 @@ service wifi-crda /system/bin/sh /system/etc/init.crda.sh
    disabled
    oneshot
 
-service config-zram /system/bin/sh /system/etc/init.qcom.zram.sh
-   class late_start
-   user root
-   disabled
-   oneshot
-
 on property:sys.boot_completed=1
     start qcom-post-boot
     start qti-testscripts
-    start config-zram
 
 service atfwd /system/bin/ATFWD-daemon
     class late_start
@@ -977,16 +977,8 @@ on property:sys.qbcharger.enable=true
 
 on property:sys.qbcharger.enable=false
     stop qbcharger
-    
-#+first boot,jiangtao.wt,add 20150810
-on property:sys.installed.running=1
-    write /sys/power/wake_lock InstalldWakeLock
 
-on property:sys.installed.running=0
-    write /sys/power/wake_unlock InstalldWakeLock
-#-first boot,jiangtao.wt,add 20150810
-
-service diag_mdlog_start /system/bin/diag_mdlog -s 200 -n 10
+service diag_mdlog_start /system/bin/diag_mdlog
     class late_start
     user shell
     group system qcom_diag sdcard_rw sdcard_r media_rw
@@ -1009,12 +1001,6 @@ on property:persist.sys.qlogd=1
 on property:persist.sys.qlogd=0
     stop qlogd
 
-
-on property:persist.radio.otaconfig=0
-    setprop persist.radio.start_ota_daemon 0
-on property:persist.radio.otaconfig=1
-    setprop persist.radio.start_ota_daemon 1
-
 service vm_bms /system/bin/vm_bms
     user root
     group root
@@ -1025,7 +1011,6 @@ service msm_irqbalance /system/bin/msm_irqbalance -f /system/vendor/etc/msm_irqb
     user root
     group root
     disabled
-    writepid /dev/cpuset/system-background/tasks
 
 service wfdservice /system/bin/wfdservice
     class main
@@ -1042,11 +1027,11 @@ on property:sys.wfdservice=enable
 on property:sys.wfdservice=disable
     stop wfdservice
 
-#service RIDL /system/vendor/bin/RIDLClient.exe
-    #class late_start
-    #oneshot
-    #user system
-    #group system inet log sdcard_r sdcard_rw qcom_diag
+service RIDL /system/vendor/bin/RIDLClient.exe
+    class late_start
+    oneshot
+    user system
+    group system inet log sdcard_r sdcard_rw qcom_diag
     # removed for security team - misc bluetooth radio gps wifi diag media_rw
     # limited to 12 groups.  Unused: audio usb net_bt_admin net_bt_stac net_raw net_admin
 
