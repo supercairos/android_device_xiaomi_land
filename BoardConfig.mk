@@ -16,8 +16,6 @@
 
 DEVICE_PATH := device/xiaomi/land
 
-TARGET_SPECIFIC_HEADER_PATH := $(DEVICE_PATH)/include
-
 # Architecture
 TARGET_CPU_CORTEX_A53 		:= true
 
