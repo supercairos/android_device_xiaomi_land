@@ -16,6 +16,10 @@
 
 DEVICE_PATH := device/xiaomi/land
 
+# Compiler Flags
+COMMON_GLOBAL_CFLAGS += -DDISABLE_ASHMEM_TRACKING
+COMMON_GLOBAL_CPPFLAGS += -DDISABLE_ASHMEM_TRACKING
+
 # Architecture
 TARGET_CPU_CORTEX_A53 		:= true
 
@@ -48,8 +52,8 @@ TARGET_KERNEL_CROSS_COMPILE_PREFIX 	:= aarch64-linux-android-
 BOARD_KERNEL_CMDLINE 	 := console=ttyHSL0,115200,n8 androidboot.console=ttyHSL0 androidboot.hardware=qcom msm_rtb.filter=0x237 ehci-hcd.park=3 lpm_levels.sleep_disabled=1 androidboot.bootdevice=7824900.sdhci earlycon=msm_hsl_uart,0x78B0000 androidboot.selinux=permissive
 BOARD_KERNEL_BASE        := 0x80000000
 BOARD_KERNEL_PAGESIZE    := 2048
-BOARD_KERNEL_TAGS_OFFSET := 0x01E00000
-BOARD_RAMDISK_OFFSET     := 0x02000000
+BOARD_KERNEL_TAGS_OFFSET := 0x00000100
+BOARD_RAMDISK_OFFSET     := 0x01000000
 BOARD_MKBOOTIMG_ARGS 	 := --ramdisk_offset BOARD_RAMDISK_OFFSET --tags_offset BOARD_KERNEL_TAGS_OFFSET
 BOARD_KERNEL_IMAGE_NAME  := Image.gz-dtb
 TARGET_KERNEL_APPEND_DTB := true
@@ -138,6 +142,7 @@ TARGET_FORCE_HWC_FOR_VIRTUAL_DISPLAYS := true
 TARGET_USES_C2D_COMPOSITION := true
 TARGET_USES_ION := true
 TARGET_USES_NEW_ION_API := true
+USE_OPENGL_RENDERER := true
 
 # Shader cache config options
 # Maximum size of the  GLES Shaders that can be cached for reuse.
@@ -148,6 +153,7 @@ MAX_EGL_CACHE_KEY_SIZE := 12*1024
 # binaries. Decrease the size if RAM or Flash Storage size is a limitation
 # of the device.
 MAX_EGL_CACHE_SIZE := 2048*1024
+MAX_VIRTUAL_DISPLAY_DIMENSION := 4096
 
 BOARD_EGL_CFG := $(DEVICE_PATH)/egl.cfg
 
